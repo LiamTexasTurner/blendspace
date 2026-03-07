@@ -1,0 +1,14 @@
+[
+  {
+    "directory": "c:/RaylibProjects/blendspace",
+    "file": "main.cpp",
+    "arguments": [
+      "g++",
+      "-std=c++23",
+      "-Ic:/raylib_src/src",
+      "-Ic:/RaylibProjects/bilinear_interpolation/include",
+      "-Ic:/eigen"  
+      "main.cpp"
+    ]
+  }
+]
