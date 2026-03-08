@@ -1,12 +1,13 @@
 [
   {
     "directory": "c:/RaylibProjects/blendspace",
-    "file": "main.cpp",
+    "file": "src/main.cpp",
+    "file": "src/animation.h",
     "arguments": [
       "g++",
       "-std=c++23",
-      "-Ic:/raylib_src/src",
-      "-Ic:/RaylibProjects/bilinear_interpolation/include",
+      "-Ic:/raylib/raylib/src",
+      "-Ic:/RaylibProjects/blendspace/include",
       "-Ic:/eigen"  
       "main.cpp"
     ]

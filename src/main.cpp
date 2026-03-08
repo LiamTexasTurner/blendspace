@@ -1,5 +1,7 @@
+
 #include "raylib.h"
 #include "raymath.h"
+#include "rlgl.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -11,9 +13,11 @@
 #include <string>
 #include <iomanip>
 #define RAYGUI_IMPLEMENTATION
+#include "helpers.h"
 #include "raygui.h"
 #include "common.h"
 #include "mat.h"
+#include "animation.h"
 #include "blendspace_gui.h"
 
 int main()
@@ -30,7 +34,7 @@ int main()
 
       int screen_width = 1920;
       int screen_height = 1080;
-
+      
       InitWindow(screen_width, screen_height, "reflection");
 
       Camera3D camera = {0};
@@ -45,8 +49,47 @@ int main()
       Model model = LoadModel("chips.glb");
       int anim_count;
       ModelAnimation *anims = LoadModelAnimations("chips.glb", &anim_count);
+
+      std::vector<BoneTransform> bind_pose(model.boneCount);
+
+      for(int i = 0; i < model.boneCount; i++)
+      {
+            bind_pose[i].translation = RayVec3ToGLM(model.bindPose[i].translation);
+            bind_pose[i].rotation    = RayQuatToGLM(model.bindPose[i].rotation);
+            bind_pose[i].scale       = RayVec3ToGLM(model.bindPose[i].scale);
+      }
+      
+      std::vector<BoneTransform> bone_transforms(model.boneCount * anim_count);
+      int frame = 15;
+      //mesh space
+      for(int i = 0; i < anim_count; i++)
+      {
+            for(int j = 0; j < model.boneCount; j++)
+            {
+                  bone_transforms[j].translation = RayVec3ToGLM(anims[i].framePoses[frame][j].translation);
+                  bone_transforms[j].rotation    = RayQuatToGLM(anims[i].framePoses[frame][j].rotation);
+                  bone_transforms[j].scale       = RayVec3ToGLM(anims[i].framePoses[frame][j].scale);
+            }      
+      }
+
+      std::vector<BoneTransform> ls_bone_transforms(model.boneCount);
+      ls_bone_transforms = bone_ms_to_ls(model, bone_transforms);
+
       
 
+      std::vector<BoneTransform> out_pose(model.boneCount);
+
+      ThreeWayBlendPose(model, 1, ls_bone_transforms, out_pose, bind_pose);
+
+      // FK(model, out_pose);
+
+      std::vector<BoneTransform> ms_bone_transforms(model.boneCount);
+      ms_bone_transforms = bone_ls_to_ms(model, out_pose);
+
+      
+      
+      DeformMesh(model, ms_bone_transforms);
+      
       const int paramspace_width = 800;
       const int paramspace_height = 800;
       
@@ -60,11 +103,10 @@ int main()
             0.5, 0.2,
             0.2, 0.5
       };
-      
       mat blend_mat = init_blend_mat(anims_uv_coords);
-      
       std::vector<float> distances(anims_uv_coords.rows, 0);
-
+      unsigned int anim_current_frame = 0;
+      
       while(!WindowShouldClose())
       {
             BeginDrawing();
@@ -74,6 +116,7 @@ int main()
                   break;
             }
 
+            
             Vector2 mouse_pos = GetMousePosition();
             UpdateCamera(&camera, CAMERA_ORBITAL);
 
@@ -83,8 +126,8 @@ int main()
 
             //-----DRAW 3D--------------------
 
-            UpdateModelAnimation(model, anims[0], 0);
-
+            
+            
             DrawModel(model, Vector3{0.0f, 0.0f, 0.0f}, 1.0f, WHITE);
 
             DrawGrid(10, 1.0f);
