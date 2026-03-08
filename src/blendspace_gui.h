@@ -184,7 +184,7 @@ void draw_blendspace_gui(BlendspaceGui blend_space_gui,
 
       GuiDrawRectangle(rec, 2, GRAY, DARKGRAY);
       
-      std::vector<float> out_uv_custom(2);
+      float out_uv_custom[2];
 
       screen_to_uv(blend_space_gui, mouse_pos, out_uv_custom);
             

@@ -34,13 +34,18 @@ int main()
       InitWindow(screen_width, screen_height, "reflection");
 
       Camera3D camera = {0};
-      camera.position = Vector3{0.0f, 3.0f, 8.f};
-      camera.target = Vector3{0.0f, 0.0f, 0.0f};
+      camera.position = Vector3{0.0f, 2.0f, 4.f};
+      camera.target = Vector3{0.0f, 1.0f, 0.0f};
       camera.up = Vector3{0.0f, 1.0f, 0.0f};
       camera.fovy = 45.f;
       camera.projection = CAMERA_PERSPECTIVE;
       
       SetTargetFPS(60);
+
+      Model model = LoadModel("chips.glb");
+      int anim_count;
+      ModelAnimation *anims = LoadModelAnimations("chips.glb", &anim_count);
+      
 
       const int paramspace_width = 800;
       const int paramspace_height = 800;
@@ -57,8 +62,6 @@ int main()
       };
       
       mat blend_mat = init_blend_mat(anims_uv_coords);
-
-      print_mat(blend_mat, "custom_blend_mat");
       
       std::vector<float> distances(anims_uv_coords.rows, 0);
 
@@ -72,17 +75,29 @@ int main()
             }
 
             Vector2 mouse_pos = GetMousePosition();
+            UpdateCamera(&camera, CAMERA_ORBITAL);
 
             ClearBackground(RAYWHITE);
 
             BeginMode3D(camera);
 
+            //-----DRAW 3D--------------------
+
+            UpdateModelAnimation(model, anims[0], 0);
+
+            DrawModel(model, Vector3{0.0f, 0.0f, 0.0f}, 1.0f, WHITE);
+
             DrawGrid(10, 1.0f);
 
+            //----STOP DRAWING 3D-----------------
+
             EndMode3D();
+
+            //----DRAW GUI-----------------------
             
             draw_blendspace_gui(blend_space_gui, mouse_pos, anims_uv_coords, blend_mat, distances);
-            
+
+            //----STOP DRAWING GUI----------------
             EndDrawing();
       }
       
