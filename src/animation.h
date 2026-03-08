@@ -78,12 +78,12 @@ void ThreeWayBlendPose(Model& model,
       }
 }
 
-std::vector<BoneTransform> bone_ms_to_ls(Model model, std::span<BoneTransform> pose)
+std::vector<BoneTransform> bone_ms_to_ls(Model model, const std::span<BoneTransform> pose)
 {
       std::vector<BoneTransform> out_pose (model.boneCount);
 
       out_pose[0].translation = glm::vec3(0);
-      out_pose[0].rotation    = glm::quat(0,0,0,0);  
+      out_pose[0].rotation    = glm::quat(1,0,0,0);  
       out_pose[0].scale       = glm::vec3(1);
       
       for(int i = 1; i < model.boneCount; i++)
@@ -99,10 +99,11 @@ std::vector<BoneTransform> bone_ms_to_ls(Model model, std::span<BoneTransform> p
             
             glm::mat4 parent_mat_inv = glm::inverse(parent_mat);
 
-            glm::vec3 ls_pos = glm::inverse(parent_rotation) * (pose[i].translation - parent_position);
-            glm::quat ls_rot =  pose[i].rotation * glm::inverse(parent_rotation);
+            glm::vec3 ls_pos = pose[i].translation - parent_position;
+            ls_pos = glm::inverse(parent_rotation) * ls_pos;
+            glm::quat ls_rot = glm::inverse(parent_rotation) * pose[i].rotation;
            
-            out_pose[i].translation = glm::vec3(ls_pos.x, ls_pos.y, ls_pos.z);
+            out_pose[i].translation = ls_pos;
             out_pose[i].rotation = ls_rot;
       }
       
@@ -394,6 +395,37 @@ Animation* LoadAnimDeep(const char* FileName, int *animCount)
       cgltf_free(data);
       return Anims;
 }
+static BoneInfo *LoadBoneInfoGLTF(cgltf_skin skin, int *boneCount)
+{
+    *boneCount = (int)skin.joints_count;
+      BoneInfo *bones = (BoneInfo*)RL_MALLOC(skin.joints_count*sizeof(BoneInfo));
+
+    for (unsigned int i = 0; i < skin.joints_count; i++)
+    {
+        cgltf_node node = *skin.joints[i];
+        if (node.name != NULL)
+        {
+            strncpy(bones[i].name, node.name, sizeof(bones[i].name));
+            bones[i].name[sizeof(bones[i].name) - 1] = '\0';
+        }
+
+        // Find parent bone index
+        int parentIndex = -1;
+
+        for (unsigned int j = 0; j < skin.joints_count; j++)
+        {
+            if (skin.joints[j] == node.parent)
+            {
+                parentIndex = (int)j;
+                break;
+            }
+        }
+
+        bones[i].parent = parentIndex;
+    }
+
+    return bones;
+}
 static glm::vec3 GetBoneTranslationAtTime(AnimTrack* TranslationTrack, float t)
 {
 
@@ -444,3 +476,4 @@ static glm::quat GetBoneRotationAtTime(AnimTrack* RotationTrack, float t)
       return q;
   
 }
+

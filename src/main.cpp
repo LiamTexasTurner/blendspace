@@ -47,6 +47,8 @@ int main()
       SetTargetFPS(60);
 
       Model model = LoadModel("chips.glb");
+      Model model_2 = LoadModel("chips.glb");
+      
       int anim_count;
       ModelAnimation *anims = LoadModelAnimations("chips.glb", &anim_count);
 
@@ -88,10 +90,17 @@ int main()
             IdlePose[i].rotation = GetBoneRotationAtTime(&rotation, 0.0f);
       }
 
+      std::vector<BoneTransform> ls_bone_transforms(model.boneCount);
+      ls_bone_transforms = bone_ms_to_ls(model, bone_transforms);
+
+      float x = 0;
       
       FK(model, IdlePose);
+      FK(model_2, ls_bone_transforms);
       
-      DeformMesh(model, bone_transforms);
+      DeformMesh(model, IdlePose);
+
+      DeformMesh(model_2, ls_bone_transforms);
       
       const int paramspace_width = 800;
       const int paramspace_height = 800;
@@ -131,7 +140,8 @@ int main()
 
             
             
-            DrawModel(model, Vector3{0.0f, 0.0f, 0.0f}, 1.0f, WHITE);
+            DrawModel(model, Vector3{1.0f, 0.0f, 0.0f}, 1.0f, WHITE);
+            DrawModel(model_2, Vector3{-1.0f, 0.0f, 0.0f}, 1.0f, WHITE);
 
             DrawGrid(10, 1.0f);
 
