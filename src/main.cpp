@@ -4,10 +4,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <cassert>
-#include <random>
 #include <stdio.h>
 #include <iostream>
-#include <iomanip>
 #include <span>
 #include <vector>
 #include <string>

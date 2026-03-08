@@ -5,6 +5,8 @@
 // |            |
 //p01 -------- p11
 
+#include "raylib.h"
+#include <vector>
 struct BlendspaceGui
 {
       Vector2 p00;
@@ -158,13 +160,15 @@ void clamp_normalize_blend_weights(std::span<float> weights)
       }
 }
 
-void draw_blendspace_gui(mat anim_uv_coord, BlendspaceGui gui_dim)
+void draw_anim_uv(mat anim_uv_coord, BlendspaceGui gui_dim, std::vector<float> blend_weights)
 {
       for(int i = 0; i < anim_uv_coord.rows; i++)
       {
             Vector2 screen_pos;
             uv_to_screen(gui_dim.p00, gui_dim.p10, gui_dim.p01, anim_uv_coord(i), &screen_pos);
-            DrawCircle(screen_pos.x, screen_pos.y, 10 , RED);
+
+            Color col = ColorLerp(WHITE, RED, blend_weights[i]);
+            DrawCircle(screen_pos.x, screen_pos.y, 5 , col);
       }
 }
 
@@ -174,24 +178,20 @@ void draw_blendspace_gui(BlendspaceGui blend_space_gui,
                          mat blend_mat,
                          std::vector<float> distances)
 {
+
+      Rectangle rec = Rectangle{blend_space_gui.p00.x, blend_space_gui.p00.y,
+                                blend_space_gui.width, blend_space_gui.height} ;
+
+      GuiDrawRectangle(rec, 2, GRAY, DARKGRAY);
+      
       std::vector<float> out_uv_custom(2);
 
       screen_to_uv(blend_space_gui, mouse_pos, out_uv_custom);
             
-      draw_blendspace_gui(anim_uv_coords, blend_space_gui);
-            
       compute_distances(anim_uv_coords, distances, out_uv_custom);
       std::vector<float> blend_weights = compute_blend_weights(distances, blend_mat);
       clamp_normalize_blend_weights(blend_weights);
-            
-      DrawText(TextFormat("%.1f  %.1f  %.1f  %.1f",
-                          blend_weights[0],
-                          blend_weights[1],
-                          blend_weights[2],
-                          blend_weights[3]), 10, 100, 25, MAGENTA);
-            
-      GuiGroupBox(Rectangle{blend_space_gui.p00.x, blend_space_gui.p00.y,
-                            blend_space_gui.width, blend_space_gui.height},
-                  "blendspace");
 
+      draw_anim_uv(anim_uv_coords, blend_space_gui, blend_weights);
+      
 }
