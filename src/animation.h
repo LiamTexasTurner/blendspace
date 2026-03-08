@@ -2,6 +2,7 @@
 #include "glm/gtc/quaternion.hpp"
 #include "glm/matrix.hpp"
 #include "raylib.h"
+#include <cstdlib>
 #include <span>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -41,11 +42,11 @@ struct BoneTransform
 
 void ThreeWayBlendPose(Model& model,
                        int num_poses,
+                       std::span<float> weights,
                        std::span<BoneTransform> in_poses,
 		           std::span<BoneTransform> OutPose,
                        std::span<BoneTransform> RefPose)
 {
-
       for(int i = 0; i < model.boneCount; i ++)
       {
             OutPose[i].translation = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -53,59 +54,72 @@ void ThreeWayBlendPose(Model& model,
             OutPose[i].scale = glm::vec3(1.0f);
       }
 
-      int i = 0;
-      
-      for(int j = 0; j < model.boneCount; j++)
+      for(int i = 0; i < 3; i ++)
       {
-            glm::vec3 translation =  in_poses[j].translation;
-                  
-            OutPose[j].translation = translation;
-            
-            glm::quat rotation =  in_poses[j].rotation;
-                  
-            glm::quat q = glm::inverse(RefPose[j].rotation) * rotation;
-            if (glm::dot(OutPose[j].rotation, q) < 0.0f) q = -q;
-            OutPose[i].rotation = q;
-            
-      }
+            if(weights[i] == 0.0f)
+            {
+                  continue;
+            }
+            for(int j = 0; j < model.boneCount; j++)
+            {
+                  glm::vec3 translation =  in_poses[i * model.boneCount + j].translation;
+                  OutPose[j].translation += weights[i] * translation;
 
       
-      
-      
+                  glm::quat rotation =  in_poses[i * model.boneCount + j].rotation;
+                  glm::quat q = glm::inverse(RefPose[j].rotation) * rotation;
+                  if (glm::dot(OutPose[j].rotation, q) < 0.0f) q = -q;
+                  OutPose[j].rotation += weights[i] * q;
+            }  
+      }
+
       for(int j= 0; j< model.boneCount; j++)
       {
             OutPose[j].rotation = glm::normalize(RefPose[j].rotation * OutPose[j].rotation);    
       }
 }
 
+
+
 std::vector<BoneTransform> bone_ms_to_ls(Model model, const std::span<BoneTransform> pose)
 {
-      std::vector<BoneTransform> out_pose (model.boneCount);
+      std::vector<BoneTransform> out_pose (model.boneCount * 3);
 
       out_pose[0].translation = glm::vec3(0);
       out_pose[0].rotation    = glm::quat(1,0,0,0);  
       out_pose[0].scale       = glm::vec3(1);
-      
-      for(int i = 1; i < model.boneCount; i++)
+
+      for(int i = 0; i < 3; i ++)
       {
-            int parent_index = model.bones[i].parent;
+            for(int j = 1; j < model.boneCount; j++)
+            {
+                  int parent_index = model.bones[j].parent;
             
-            glm::vec3 parent_position = pose[parent_index].translation;
-            glm::quat parent_rotation = pose[parent_index].rotation;
-            glm::mat4 parent_mat = glm::translate(glm::mat4(1.0f), parent_position) *
-			                 glm::mat4_cast(parent_rotation);
+                  glm::vec3 parent_position = pose[i * model.boneCount + parent_index].translation;
+                  glm::quat parent_rotation = pose[i * model.boneCount + parent_index].rotation;
+                  glm::mat4 parent_mat = glm::translate(glm::mat4(1.0f), parent_position) *
+			                       glm::mat4_cast(parent_rotation);
 
 
             
-            glm::mat4 parent_mat_inv = glm::inverse(parent_mat);
+                  glm::mat4 parent_mat_inv = glm::inverse(parent_mat);
 
-            glm::vec3 ls_pos = pose[i].translation - parent_position;
-            ls_pos = glm::inverse(parent_rotation) * ls_pos;
-            glm::quat ls_rot = glm::inverse(parent_rotation) * pose[i].rotation;
+                  glm::vec3 ls_pos = pose[i * model.boneCount + j].translation - parent_position;
+                  ls_pos = glm::inverse(parent_rotation) * ls_pos;
+
+            
+            
+                  glm::quat ls_rot = glm::inverse(parent_rotation) * pose[i * model.boneCount + j].rotation;
            
-            out_pose[i].translation = ls_pos;
-            out_pose[i].rotation = ls_rot;
+                  out_pose[i * model.boneCount + j].translation = ls_pos;
+                  out_pose[i * model.boneCount + j].rotation = ls_rot;
+
+                  // glm::vec4 ls_pos4 = glm::inverse(parent_mat) * glm::vec4(pose[i * model.boneCount + i].translation, 1.0f);
+                  // out_pose[i * model.boneCount + i].translation = glm::vec3(ls_pos4.x, ls_pos4.y, ls_pos4.z);
+            }      
       }
+      
+      
       
       return out_pose;
 }

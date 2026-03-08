@@ -176,7 +176,8 @@ void draw_blendspace_gui(BlendspaceGui blend_space_gui,
                          Vector2 mouse_pos,
                          mat anim_uv_coords,
                          mat blend_mat,
-                         std::vector<float> distances)
+                         std::vector<float> distances,
+                         std::vector<float>& out_vec)
 {
 
       Rectangle rec = Rectangle{blend_space_gui.p00.x, blend_space_gui.p00.y,
@@ -191,6 +192,8 @@ void draw_blendspace_gui(BlendspaceGui blend_space_gui,
       compute_distances(anim_uv_coords, distances, out_uv_custom);
       std::vector<float> blend_weights = compute_blend_weights(distances, blend_mat);
       clamp_normalize_blend_weights(blend_weights);
+
+      out_vec = blend_weights;
 
       draw_anim_uv(anim_uv_coords, blend_space_gui, blend_weights);
       
