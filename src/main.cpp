@@ -62,33 +62,36 @@ int main()
       std::vector<BoneTransform> bone_transforms(model.boneCount * anim_count);
       int frame = 15;
       //mesh space
-      for(int i = 0; i < anim_count; i++)
+      for(int i = 0; i < model.boneCount; i++)
       {
-            for(int j = 0; j < model.boneCount; j++)
-            {
-                  bone_transforms[j].translation = RayVec3ToGLM(anims[i].framePoses[frame][j].translation);
-                  bone_transforms[j].rotation    = RayQuatToGLM(anims[i].framePoses[frame][j].rotation);
-                  bone_transforms[j].scale       = RayVec3ToGLM(anims[i].framePoses[frame][j].scale);
-            }      
+
+            bone_transforms[i].translation = RayVec3ToGLM(anims[0].framePoses[frame][i].translation);
+            bone_transforms[i].rotation    = RayQuatToGLM(anims[0].framePoses[frame][i].rotation);
+            bone_transforms[i].scale       = RayVec3ToGLM(anims[0].framePoses[frame][i].scale);
+            
       }
 
-      std::vector<BoneTransform> ls_bone_transforms(model.boneCount);
-      ls_bone_transforms = bone_ms_to_ls(model, bone_transforms);
+      int AnimCount = 0;
+      Animation* Anims = LoadAnimDeep("chips.glb", &AnimCount);
+
+      Animation* Idle =(Animation*)malloc(sizeof(Animation));
+      *Idle = Anims[0];
+
+      std::vector<BoneTransform> IdlePose(model.boneCount);
+
+      for(int i = 0; i < model.boneCount; i++)
+      {
+            AnimTrack translation = Idle->bones[i].translation;
+            IdlePose[i].translation = GetBoneTranslationAtTime(&translation, 0.0f);
+
+            AnimTrack rotation = Idle->bones[i].rotation;
+            IdlePose[i].rotation = GetBoneRotationAtTime(&rotation, 0.0f);
+      }
 
       
-
-      std::vector<BoneTransform> out_pose(model.boneCount);
-
-      ThreeWayBlendPose(model, 1, ls_bone_transforms, out_pose, bind_pose);
-
-      // FK(model, out_pose);
-
-      std::vector<BoneTransform> ms_bone_transforms(model.boneCount);
-      ms_bone_transforms = bone_ls_to_ms(model, out_pose);
-
+      FK(model, IdlePose);
       
-      
-      DeformMesh(model, ms_bone_transforms);
+      DeformMesh(model, bone_transforms);
       
       const int paramspace_width = 800;
       const int paramspace_height = 800;
@@ -146,3 +149,4 @@ int main()
       
       return 0;
 }
+
