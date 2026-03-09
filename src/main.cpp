@@ -1,4 +1,5 @@
 
+#include "glm/common.hpp"
 #include "glm/geometric.hpp"
 #include "raylib.h"
 #include "raymath.h"
@@ -90,10 +91,10 @@ int main()
       anims_uv_coords.cols = 2;
       anims_uv_coords.data =
       {
-            0.5, 0.2,
-            0.8, 0.5,
-            0.5, 0.8,
-            0.2, 0.5
+            0.5, 0.0,
+            1.0, 0.5,
+            0.5, 1.0,
+            0.0, 0.5
       };
       
       mat blend_mat = init_blend_mat(anims_uv_coords);
@@ -103,6 +104,7 @@ int main()
       std::vector<float> blend_weights(anim_count);
 
       glm::vec2 input;
+      glm::vec2 uv{0.5f, 0.5f};
       
       while(!WindowShouldClose())
       {
@@ -111,7 +113,6 @@ int main()
             process_input(GetFrameTime(), input);
 
             DrawText(TextFormat("%.1f, %.1f", input.x, input.y), 10, 600, 25, GRAY);
-
             
             Vector2 mouse_pos = GetMousePosition();
             UpdateCamera(&camera, CAMERA_ORBITAL);
@@ -136,29 +137,16 @@ int main()
       
             ls_bone_transforms = bone_ms_to_ls(model, bone_transforms, anim_count);
 
-
             ThreeWayBlendPose(model, anim_count, blend_weights, ls_bone_transforms, out_pose, bind_pose);
-
             
             FK(model, out_pose);
-
-            std::vector<BoneTransform> temp_pose(model.boneCount);
-            for(int j = 0; j < model.boneCount; j++)
-            {
-
-                  temp_pose[j].translation = RayVec3ToGLM(anims[1].framePoses[frame][j].translation);
-                  temp_pose[j].rotation    = RayQuatToGLM(anims[1].framePoses[frame][j].rotation);
-                  temp_pose[j].scale       = RayVec3ToGLM(anims[1].framePoses[frame][j].scale);
             
-            }
-            
-
             DeformMesh(model, out_pose);
 
             
             DrawModel(model, Vector3{0.0f, 0.0f, 0.0f}, 1.0f, WHITE);
 
-                        frame = (frame + 1)%(40);
+            frame = (frame + 1)%(40);
 
             DrawGrid(10, 1.0f);
 
@@ -166,9 +154,13 @@ int main()
 
             EndMode3D();
 
-            //----DRAW GUI-----------------------
             
-            draw_blendspace_gui(blend_space_gui, anim_count, mouse_pos, anims_uv_coords, blend_mat,  distances, blend_weights);
+
+            //----DRAW GUI-----------------------
+
+            compute_blendspace_pos(GetFrameTime(), input, uv);
+            
+            draw_blendspace_gui(blend_space_gui, anim_count, uv, anims_uv_coords, blend_mat,  distances, blend_weights);
 
             //----STOP DRAWING GUI----------------
             EndDrawing();

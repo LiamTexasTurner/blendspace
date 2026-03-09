@@ -5,7 +5,10 @@
 // |            |
 //p01 -------- p11
 
+#include "glm/common.hpp"
 #include "raylib.h"
+#include <cstddef>
+#include <cstdlib>
 #include <vector>
 struct BlendspaceGui
 {
@@ -35,7 +38,7 @@ void print_glm_mat(const glm::mat<C, R, T>& m, std::string str = "")
 }
 
 bool screen_to_uv(BlendspaceGui gui_dim,
-                  Vector2  &p,
+                  Vector2 &p,
                   std::span<float> outUV)
 {
       glm::mat2 A = glm::mat2(0.0f);
@@ -126,7 +129,7 @@ mat init_blend_mat(mat anim_uv)
 
 void compute_distances(mat &mat,
                        std::span<float> distance,
-                       std::span<float> uv)
+                       glm::vec2 uv)
 {
       for(int i = 0; i < mat.rows; i++)
       {
@@ -160,8 +163,15 @@ void clamp_normalize_blend_weights(std::span<float> weights)
       }
 }
 
-void draw_anim_uv(mat anim_uv_coord, BlendspaceGui gui_dim, std::vector<float> blend_weights)
+void draw_anim_uv(glm::vec2 blendspace_pos, mat anim_uv_coord, BlendspaceGui gui_dim, std::vector<float> blend_weights)
 {
+      Vector2 blendspace_screen_pos;
+      float uv[2];
+      uv[0] = blendspace_pos.x;
+      uv[1] = blendspace_pos.y;
+      uv_to_screen(gui_dim.p00, gui_dim.p10, gui_dim.p01, uv, &blendspace_screen_pos);
+      DrawCircle(blendspace_screen_pos.x, blendspace_screen_pos.y, 10 , WHITE);
+      
       for(int i = 0; i < anim_uv_coord.rows; i++)
       {
             Vector2 screen_pos;
@@ -172,9 +182,40 @@ void draw_anim_uv(mat anim_uv_coord, BlendspaceGui gui_dim, std::vector<float> b
       }
 }
 
+void compute_blendspace_pos(float dt, glm::vec2 input, glm::vec2 &uv)
+{
+
+      glm::vec2 offset(0.5f, 0.5f);
+      float delta_x = 0;
+      float delta_y = 0;
+      input.y = -input.y;
+      if(abs(input.x) > 0.1f)
+      {
+            delta_x = input.x * dt * 4;
+            uv.x += delta_x;
+      }
+      else
+      {
+            uv.x += (0.5f - uv.x) * (dt * 4);
+      }
+      
+      if(abs(input.y) > 0.1f)
+      {
+            
+            delta_y = input.y * dt * 4;
+            uv.y += delta_y;
+      }
+      else
+      {
+            uv.y += (0.5f - uv.y) * (dt * 4);
+      }
+
+      uv = glm::clamp(uv, 0.0f, 1.0f);
+}
+
 void draw_blendspace_gui(BlendspaceGui blend_space_gui,
                          int anim_count,
-                         Vector2 mouse_pos,
+                         glm::vec2 uv,
                          mat anim_uv_coords,
                          mat blend_mat,
                          std::vector<float> distances,
@@ -186,17 +227,15 @@ void draw_blendspace_gui(BlendspaceGui blend_space_gui,
 
       GuiDrawRectangle(rec, 2, GRAY, DARKGRAY);
       
-      float out_uv_custom[2];
-
-      screen_to_uv(blend_space_gui, mouse_pos, out_uv_custom);
-            
-      compute_distances(anim_uv_coords, distances, out_uv_custom);
+      compute_distances(anim_uv_coords, distances, uv);
+      DrawText(TextFormat("%.1f, %.1f", uv.x, uv.y), 10, 630, 25, GREEN);
       std::vector<float> blend_weights = compute_blend_weights(distances, blend_mat);
       clamp_normalize_blend_weights(blend_weights);
 
       out_vec = blend_weights;
 
-      draw_anim_uv(anim_uv_coords, blend_space_gui, blend_weights);
+      draw_anim_uv(uv, anim_uv_coords, blend_space_gui, blend_weights);
+      
 
       for(int i = 0; i < anim_count; i++)
       {
