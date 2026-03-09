@@ -202,6 +202,4 @@ void draw_blendspace_gui(BlendspaceGui blend_space_gui,
       {
             DrawText(TextFormat("%.1f\n", blend_weights[i]), 10, 50 + 20 * i, 25, RED);            
       }
-
-      
 }

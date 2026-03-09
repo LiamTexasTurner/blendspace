@@ -1,4 +1,5 @@
 
+#include "glm/geometric.hpp"
 #include "raylib.h"
 #include "raymath.h"
 #include "rlgl.h"
@@ -19,19 +20,17 @@
 #include "mat.h"
 #include "animation.h"
 #include "blendspace_gui.h"
+#include "input.h"
 
 int main()
 {
-
-      
       BlendspaceGui blend_space_gui
       {
             Vector2{10, 10},
-            Vector2{300, 10},
-            Vector2{10, 300},
-            290,
-            290
-            
+            Vector2{400, 10},
+            Vector2{10, 400},
+            390,
+            390
       };
 
       int screen_width = 1920;
@@ -52,11 +51,10 @@ int main()
       
       int anim_count;
       ModelAnimation *anims = LoadModelAnimations("chips.glb", &anim_count);
+      int frame = 0;            
 
       std::vector<BoneTransform> bind_pose(model.boneCount);
-
-      std::vector<BoneTransform> out_pose(model.boneCount);
-
+      
       
       for(int i = 0; i < model.boneCount; i++)
       {
@@ -64,9 +62,7 @@ int main()
             bind_pose[i].rotation    = RayQuatToGLM(model.bindPose[i].rotation);
             bind_pose[i].scale       = RayVec3ToGLM(model.bindPose[i].scale);
       }
-
-      int frame = 0;            
-
+      
       std::vector<BoneTransform> bone_transforms(model.boneCount * anim_count);
 
       for(int i = 0; i < anim_count; i ++)
@@ -80,15 +76,11 @@ int main()
             
             }
       }
-
             
-      
-      
       std::vector<BoneTransform> ls_bone_transforms(model.boneCount * anim_count);
       ls_bone_transforms = bone_ms_to_ls(model, bone_transforms, anim_count);
       
-      
-
+      std::vector<BoneTransform> out_pose(model.boneCount);
       
       const int paramspace_width = 800;
       const int paramspace_height = 800;
@@ -103,27 +95,22 @@ int main()
             0.5, 0.8,
             0.2, 0.5
       };
+      
       mat blend_mat = init_blend_mat(anims_uv_coords);
       std::vector<float> distances(anim_count, 0);
       unsigned int anim_current_frame = 0;
 
-      std::vector<float> blend_weights
-      {
-            1.0f,
-            0.0f,
-            0.0f,
-            0.0f
-      };
+      std::vector<float> blend_weights(anim_count);
 
+      glm::vec2 input;
       
       while(!WindowShouldClose())
       {
             BeginDrawing();
 
-            if(IsKeyPressed(KEY_Q))
-            {
-                  break;
-            }
+            process_input(GetFrameTime(), input);
+
+            DrawText(TextFormat("%.1f, %.1f", input.x, input.y), 10, 600, 25, GRAY);
 
             
             Vector2 mouse_pos = GetMousePosition();
@@ -134,8 +121,6 @@ int main()
             BeginMode3D(camera);
 
             //-----DRAW 3D--------------------
-
-
 
             for(int i = 0; i < anim_count; i ++)
             {
