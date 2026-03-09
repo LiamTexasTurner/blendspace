@@ -173,6 +173,7 @@ void draw_anim_uv(mat anim_uv_coord, BlendspaceGui gui_dim, std::vector<float> b
 }
 
 void draw_blendspace_gui(BlendspaceGui blend_space_gui,
+                         int anim_count,
                          Vector2 mouse_pos,
                          mat anim_uv_coords,
                          mat blend_mat,
@@ -196,5 +197,11 @@ void draw_blendspace_gui(BlendspaceGui blend_space_gui,
       out_vec = blend_weights;
 
       draw_anim_uv(anim_uv_coords, blend_space_gui, blend_weights);
+
+      for(int i = 0; i < anim_count; i++)
+      {
+            DrawText(TextFormat("%.1f\n", blend_weights[i]), 10, 50 + 20 * i, 25, RED);            
+      }
+
       
 }

@@ -49,27 +49,6 @@ int main()
       SetTargetFPS(60);
 
       Model model = LoadModel("chips.glb");
-      Model model_2 = LoadModel("chips.glb");
-
-      int AnimCount = 0;
-      Animation* Anims = LoadAnimDeep("chips.glb", &AnimCount);
-
-      Animation* Idle =(Animation*)malloc(sizeof(Animation));
-      *Idle = Anims[0];
-
-      std::vector<BoneTransform> IdlePose(model.boneCount);
-
-      for(int i = 0; i < model.boneCount; i++)
-      {
-            AnimTrack translation = Idle->bones[i].translation;
-            IdlePose[i].translation = GetBoneTranslationAtTime(&translation, 0.0f);
-
-            AnimTrack rotation = Idle->bones[i].rotation;
-            IdlePose[i].rotation = GetBoneRotationAtTime(&rotation, 0.0f);
-      }
-      FK(model, IdlePose);
-      DeformMesh(model, IdlePose);
-      
       
       int anim_count;
       ModelAnimation *anims = LoadModelAnimations("chips.glb", &anim_count);
@@ -86,11 +65,11 @@ int main()
             bind_pose[i].scale       = RayVec3ToGLM(model.bindPose[i].scale);
       }
 
-      int frame = (frame + 1)%anims[1].frameCount;            
+      int frame = 0;            
 
-      std::vector<BoneTransform> bone_transforms(model.boneCount * 3);
+      std::vector<BoneTransform> bone_transforms(model.boneCount * anim_count);
 
-      for(int i = 0; i < 3; i ++)
+      for(int i = 0; i < anim_count; i ++)
       {
             for(int j = 0; j < model.boneCount; j++)
             {
@@ -105,8 +84,8 @@ int main()
             
       
       
-      std::vector<BoneTransform> ls_bone_transforms(model.boneCount * 3);
-      ls_bone_transforms = bone_ms_to_ls(model, bone_transforms);
+      std::vector<BoneTransform> ls_bone_transforms(model.boneCount * anim_count);
+      ls_bone_transforms = bone_ms_to_ls(model, bone_transforms, anim_count);
       
       
 
@@ -115,24 +94,27 @@ int main()
       const int paramspace_height = 800;
       
       mat anims_uv_coords = {};
-      anims_uv_coords.rows = 3;
+      anims_uv_coords.rows = anim_count;
       anims_uv_coords.cols = 2;
       anims_uv_coords.data =
       {
             0.5, 0.2,
-            0.8, 0.8,
-            0.2, 0.8,
+            0.8, 0.5,
+            0.5, 0.8,
+            0.2, 0.5
       };
       mat blend_mat = init_blend_mat(anims_uv_coords);
-      std::vector<float> distances(anims_uv_coords.rows, 0);
+      std::vector<float> distances(anim_count, 0);
       unsigned int anim_current_frame = 0;
 
       std::vector<float> blend_weights
       {
+            1.0f,
             0.0f,
             0.0f,
-            1.0f
+            0.0f
       };
+
       
       while(!WindowShouldClose())
       {
@@ -153,9 +135,9 @@ int main()
 
             //-----DRAW 3D--------------------
 
-            frame = (frame + 1)%anims[1].frameCount;            
 
-            for(int i = 0; i < 3; i ++)
+
+            for(int i = 0; i < anim_count; i ++)
             {
                   for(int j = 0; j < model.boneCount; j++)
                   {
@@ -167,30 +149,31 @@ int main()
                   }
             }
       
-            ls_bone_transforms = bone_ms_to_ls(model, bone_transforms);
+            ls_bone_transforms = bone_ms_to_ls(model, bone_transforms, anim_count);
 
-            std::vector<float> test
+
+            ThreeWayBlendPose(model, anim_count, blend_weights, ls_bone_transforms, out_pose, bind_pose);
+
+            
+            FK(model, out_pose);
+
+            std::vector<BoneTransform> temp_pose(model.boneCount);
+            for(int j = 0; j < model.boneCount; j++)
             {
-                        1.0f,
-                        0.0f,
-                        0.0f
-            };
 
-            ThreeWayBlendPose(model, 3, blend_weights, ls_bone_transforms, out_pose, bind_pose);
+                  temp_pose[j].translation = RayVec3ToGLM(anims[1].framePoses[frame][j].translation);
+                  temp_pose[j].rotation    = RayQuatToGLM(anims[1].framePoses[frame][j].rotation);
+                  temp_pose[j].scale       = RayVec3ToGLM(anims[1].framePoses[frame][j].scale);
+            
+            }
+            
 
-            printf("%f, %f, %f\n", blend_weights[0], blend_weights[1], blend_weights[2]);
-      
-      
+            DeformMesh(model, out_pose);
 
             
-            FK(model_2, out_pose);
-      
-            DeformMesh(model_2, out_pose);
+            DrawModel(model, Vector3{0.0f, 0.0f, 0.0f}, 1.0f, WHITE);
 
-            
-            
-            DrawModel(model, Vector3{1.0f, 0.0f, 0.0f}, 1.0f, WHITE);
-            DrawModel(model_2, Vector3{-1.0f, 0.0f, 0.0f}, 1.0f, WHITE);
+                        frame = (frame + 1)%(40);
 
             DrawGrid(10, 1.0f);
 
@@ -200,7 +183,7 @@ int main()
 
             //----DRAW GUI-----------------------
             
-            draw_blendspace_gui(blend_space_gui, mouse_pos, anims_uv_coords, blend_mat,  distances, blend_weights);
+            draw_blendspace_gui(blend_space_gui, anim_count, mouse_pos, anims_uv_coords, blend_mat,  distances, blend_weights);
 
             //----STOP DRAWING GUI----------------
             EndDrawing();

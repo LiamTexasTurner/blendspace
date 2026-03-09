@@ -7,7 +7,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include "cgltf.c"
+
 
 struct AnimTrack
 {
@@ -41,7 +41,7 @@ struct BoneTransform
 };
 
 void ThreeWayBlendPose(Model& model,
-                       int num_poses,
+                       int anim_count,
                        std::span<float> weights,
                        std::span<BoneTransform> in_poses,
 		           std::span<BoneTransform> OutPose,
@@ -54,7 +54,7 @@ void ThreeWayBlendPose(Model& model,
             OutPose[i].scale = glm::vec3(1.0f);
       }
 
-      for(int i = 0; i < 3; i ++)
+      for(int i = 0; i < anim_count; i ++)
       {
             if(weights[i] == 0.0f)
             {
@@ -81,15 +81,15 @@ void ThreeWayBlendPose(Model& model,
 
 
 
-std::vector<BoneTransform> bone_ms_to_ls(Model model, const std::span<BoneTransform> pose)
+std::vector<BoneTransform> bone_ms_to_ls(Model model, const std::span<BoneTransform> pose, int anim_count)
 {
-      std::vector<BoneTransform> out_pose (model.boneCount * 3);
+      std::vector<BoneTransform> out_pose (model.boneCount * anim_count);
 
       out_pose[0].translation = glm::vec3(0);
       out_pose[0].rotation    = glm::quat(1,0,0,0);  
       out_pose[0].scale       = glm::vec3(1);
 
-      for(int i = 0; i < 3; i ++)
+      for(int i = 0; i < anim_count; i ++)
       {
             for(int j = 1; j < model.boneCount; j++)
             {
@@ -221,273 +221,3 @@ void DeformMesh(Model model, std::span<BoneTransform> pose)
             rlUpdateVertexBuffer(mesh.vboId[0], mesh.animVertices, mesh.vertexCount*3*sizeof(float), 0);
       }
 }
-int FindBoneIndex(const cgltf_skin* skin, const cgltf_node* node)
-{
-      for (int i = 0; i < (int)skin->joints_count; ++i)
-      {
-            if (skin->joints[i] == node) return i;
-      }
-    
-      return -1;
-}
-
-
-void LoadAnimation(const cgltf_data* data, int animIndex, const cgltf_skin* skin, Animation* out)
-{
-      const cgltf_animation* anim = &data->animations[animIndex];
-
-      out->boneCount = (int)skin->joints_count;
-      out->bones = (BoneAnim*)RL_CALLOC(out->boneCount, sizeof(BoneAnim));
-
-      for (int c = 0; c < (int)anim->channels_count; ++c)
-      {
-            const cgltf_animation_channel* ch = &anim->channels[c];
-            const cgltf_animation_sampler* s  = ch->sampler;
-
-            int bone = FindBoneIndex(skin, ch->target_node);
-            if (bone < 0) continue; // channel targets a node not in this skin
-
-            int keyCount = (int)s->input->count;
-
-            AnimTrack* track = NULL;
-            int components = 0;
-
-            switch (ch->target_path)
-            {
-                  case cgltf_animation_path_type_translation:
-                        track = &out->bones[bone].translation;
-                        components = 3;
-                        break;
-
-                  case cgltf_animation_path_type_rotation:
-                        track = &out->bones[bone].rotation;
-                        components = 4;
-                        break;
-
-                  case cgltf_animation_path_type_scale:
-                        track = &out->bones[bone].scale;
-                        components = 3;
-                        break;
-
-                  default:
-                        continue;
-            }
-
-            track->keyCount = keyCount;
-            track->components = components;
-
-            // ---- copy times ----
-            track->times = (float*)RL_MALLOC(sizeof(float) * keyCount);
-            for (int k = 0; k < keyCount; ++k)
-                  cgltf_accessor_read_float(s->input, k, &track->times[k], 1);
-
-            // ---- copy values ----
-            size_t elemSize = (components == 4) ? (4*sizeof(float)) : (3*sizeof(float));
-            track->vec = (float*)RL_MALLOC(elemSize * keyCount);
-
-            for (int k = 0; k < keyCount; ++k)
-            {
-                  cgltf_accessor_read_float(
-                                            s->output,
-                                            k,
-                                            (float*)track->vec + k * components,
-                                            components
-                                            );
-            }
-
-            // ---- update duration ----
-            float lastT = track->times[keyCount - 1];
-            if (lastT > out->duration) out->duration = lastT;
-      }
-
-}
-Animation* LoadAnimDeep(const char* FileName, int *animCount)
-{
-      Animation* Anims = NULL;
-
-      int dataSize = 0;
-      unsigned char *fileData = LoadFileData(FileName, &dataSize);
-
-      cgltf_options options = { 0 };
-      cgltf_data *data = NULL;
-      cgltf_result result = cgltf_parse(&options, fileData, dataSize, &data);
-
-      if (result != cgltf_result_success)
-      {
-            TraceLog(LOG_INFO, "failed loading anim");
-
-      }
-      else
-      {
-            TraceLog(LOG_INFO, "LoadedAnim");
-      }
-
-      result = cgltf_load_buffers(&options, data, FileName);
-
-      if (result != cgltf_result_success)
-      {
-            TRACELOG(LOG_INFO, "MODEL: [%s] Failed to load animation buffers", fileName);
-      }
-    
-
-      if (result == cgltf_result_success)
-      {
-            if (data->skins_count > 0)
-            {
-                  cgltf_skin skin = data->skins[0];
-                  int AnimCount = data->animations_count;
-                  *animCount = AnimCount;
-                  Anims = (Animation*)malloc(AnimCount*sizeof(Animation));
-                  for(int i = 0; i < AnimCount; i ++)
-                  {
-	                  const cgltf_animation* anim = &data->animations[i];
-
-	                  Anims[i].boneCount = skin.joints_count;
-	                  Anims[i].bones = (BoneAnim*)malloc(Anims[i].boneCount*sizeof(BoneAnim));
-	                  Anims[i].channelCount = (int)anim->channels_count;
-
-	                  for (int c = 0; c < (int)anim->channels_count; ++c)
-	                  {
-	                        const cgltf_animation_channel* ch = &anim->channels[c];
-	                        const cgltf_animation_sampler* s  = ch->sampler;
-
-	                        int bone = FindBoneIndex(&skin, ch->target_node);
-	                        if (bone < 0) continue; 
-
-	                        int keyCount = (int)s->input->count;
-
-	                        AnimTrack* track = NULL;
-	                        int components = 0;
-
-	                        switch (ch->target_path)
-	                        {
-	                              case cgltf_animation_path_type_translation:
-                                          track = &Anims[i].bones[bone].translation;
-                                          components = 3;
-                                          break;
-
-	                              case cgltf_animation_path_type_rotation:
-                                          track = &Anims[i].bones[bone].rotation;
-                                          components = 4;
-                                          break;
-
-	                              case cgltf_animation_path_type_scale:
-                                          track = &Anims[i].bones[bone].scale;
-                                          components = 3;
-                                          break;
-
-	                              default:
-                                          continue;
-	                        }
-
-	                        track->keyCount = keyCount;
-	                        track->components = components;
-
-
-	                        track->times = (float*)malloc(sizeof(float) * keyCount);
-	                        for (int k = 0; k < keyCount; ++k)
-	                              cgltf_accessor_read_float(s->input, k, &track->times[k], 1);
-
-	                        size_t elemSize = (components == 4) ? (4*sizeof(float)) : (3*sizeof(float));
-	                        track->vec = (float*)malloc(elemSize * keyCount);
-
-	                        for (int k = 0; k < keyCount; ++k)
-	                        {
-	                              cgltf_accessor_read_float(
-                                                              s->output,
-                                                              k,
-                                                              (float*)track->vec + k * components,
-                                                              components
-                                                              );
-	                        }
-	                        float lastT = track->times[keyCount - 1];
-	                        if (lastT > Anims[i].duration) Anims[i].duration = lastT;
-	                  }
-                  }      
-            }
-      }
-      cgltf_free(data);
-      return Anims;
-}
-static BoneInfo *LoadBoneInfoGLTF(cgltf_skin skin, int *boneCount)
-{
-    *boneCount = (int)skin.joints_count;
-      BoneInfo *bones = (BoneInfo*)RL_MALLOC(skin.joints_count*sizeof(BoneInfo));
-
-    for (unsigned int i = 0; i < skin.joints_count; i++)
-    {
-        cgltf_node node = *skin.joints[i];
-        if (node.name != NULL)
-        {
-            strncpy(bones[i].name, node.name, sizeof(bones[i].name));
-            bones[i].name[sizeof(bones[i].name) - 1] = '\0';
-        }
-
-        // Find parent bone index
-        int parentIndex = -1;
-
-        for (unsigned int j = 0; j < skin.joints_count; j++)
-        {
-            if (skin.joints[j] == node.parent)
-            {
-                parentIndex = (int)j;
-                break;
-            }
-        }
-
-        bones[i].parent = parentIndex;
-    }
-
-    return bones;
-}
-static glm::vec3 GetBoneTranslationAtTime(AnimTrack* TranslationTrack, float t)
-{
-
-      if(TranslationTrack->keyCount <= 2)
-      {
-            return  glm::vec3(TranslationTrack->vec[0], TranslationTrack->vec[1], TranslationTrack->vec[2]);
-      }
-
-      int k = 0;
-      float t0 = TranslationTrack->times[k];
-      float t1 = TranslationTrack->times[k + 1];
-
-      float denom = (t1 - t0);
-      float a = (denom > 0.0f) ? (t - t0) / denom : 0.0f;
-
-      int i0 = k * 3;
-      int i1 = (k + 1) * 3;
-
-      glm::vec3 v0(TranslationTrack->vec[i0 + 0], TranslationTrack->vec[i0 + 1], TranslationTrack->vec[i0 + 2]);
-      glm::vec3 v1(TranslationTrack->vec[i1 + 0], TranslationTrack->vec[i1 + 1], TranslationTrack->vec[i1 + 2]);
-
-      return v0 + a * (v1 - v0);
-}
-
-
-
-static glm::quat GetBoneRotationAtTime(AnimTrack* RotationTrack, float t)
-{
-
-      int CurrentFrame = 0;
-      float t0 = RotationTrack->times[CurrentFrame];
-      float t1 = RotationTrack->times[CurrentFrame + 1];
-
-      float denom = (t1 - t0);
-      float SlerpAlpha = (denom > 0.0f) ? (t - t0) / denom : 0.0f;
-  
-      int i = CurrentFrame * 4;
-      glm::quat q0 = glm::quat(RotationTrack->vec[i + 3],RotationTrack->vec[i + 0],RotationTrack->vec[i + 1],RotationTrack->vec[i + 2]);
-      i += 4;
-      glm::quat q1 = glm::quat(RotationTrack->vec[i + 3],RotationTrack->vec[i + 0],RotationTrack->vec[i + 1],RotationTrack->vec[i + 2]);  
-
-      if (glm::dot(q0, q1) < 0.0f)
-      {
-            q1 = -q1;
-      }   
-
-      glm::quat q = glm::slerp(q0, q1, SlerpAlpha);
-      return q;
-  
-}
-
