@@ -28,10 +28,10 @@ int main()
       BlendspaceGui blend_space_gui
       {
             Vector2{10, 10},
-            Vector2{400, 10},
-            Vector2{10, 400},
-            390,
-            390
+            Vector2{500, 10},
+            Vector2{10, 500},
+            490,
+            490
       };
 
       int screen_width = 1920;
@@ -47,6 +47,7 @@ int main()
       camera.projection = CAMERA_PERSPECTIVE;
       
       SetTargetFPS(60);
+      GuiSetIconScale(1);   
 
       Model model = LoadModel("chips.glb");
       
@@ -55,7 +56,6 @@ int main()
       int frame = 0;            
 
       std::vector<BoneTransform> bind_pose(model.boneCount);
-      
       
       for(int i = 0; i < model.boneCount; i++)
       {
@@ -74,7 +74,6 @@ int main()
                   bone_transforms[j].translation = RayVec3ToGLM(anims[i].framePoses[frame][j].translation);
                   bone_transforms[j].rotation    = RayQuatToGLM(anims[i].framePoses[frame][j].rotation);
                   bone_transforms[j].scale       = RayVec3ToGLM(anims[i].framePoses[frame][j].scale);
-            
             }
       }
             
@@ -91,10 +90,10 @@ int main()
       anims_uv_coords.cols = 2;
       anims_uv_coords.data =
       {
-            0.5, 0.0,
             1.0, 0.5,
-            0.5, 1.0,
-            0.0, 0.5
+            0.5, 0.0,
+            0.0, 0.5,
+            0.5, 1.0
       };
       
       mat blend_mat = init_blend_mat(anims_uv_coords);
@@ -110,18 +109,15 @@ int main()
       {
             BeginDrawing();
 
-            process_input(GetFrameTime(), input);
-
-            DrawText(TextFormat("%.1f, %.1f", input.x, input.y), 10, 600, 25, GRAY);
+            tick_input(GetFrameTime(), input);
             
-            Vector2 mouse_pos = GetMousePosition();
             UpdateCamera(&camera, CAMERA_ORBITAL);
 
             ClearBackground(RAYWHITE);
+            
+            //-----DRAW 3D--------------------
 
             BeginMode3D(camera);
-
-            //-----DRAW 3D--------------------
 
             for(int i = 0; i < anim_count; i ++)
             {
@@ -150,20 +146,27 @@ int main()
 
             DrawGrid(10, 1.0f);
 
+            EndMode3D();
+
             //----STOP DRAWING 3D-----------------
 
-            EndMode3D();
+            
 
             
 
             //----DRAW GUI-----------------------
+            
+            
+            
 
             compute_blendspace_pos(GetFrameTime(), input, uv);
             
-            draw_blendspace_gui(blend_space_gui, anim_count, uv, anims_uv_coords, blend_mat,  distances, blend_weights);
+            tick_blendspace_gui(blend_space_gui, anim_count, uv, anims_uv_coords, blend_mat,  distances, blend_weights);
+
+            EndDrawing();
 
             //----STOP DRAWING GUI----------------
-            EndDrawing();
+            
       }
       
       return 0;

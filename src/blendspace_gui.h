@@ -163,14 +163,14 @@ void clamp_normalize_blend_weights(std::span<float> weights)
       }
 }
 
+void config_blendspace_anim(Rectangle rec)
+{
+      
+}
+
 void draw_anim_uv(glm::vec2 blendspace_pos, mat anim_uv_coord, BlendspaceGui gui_dim, std::vector<float> blend_weights)
 {
-      Vector2 blendspace_screen_pos;
-      float uv[2];
-      uv[0] = blendspace_pos.x;
-      uv[1] = blendspace_pos.y;
-      uv_to_screen(gui_dim.p00, gui_dim.p10, gui_dim.p01, uv, &blendspace_screen_pos);
-      DrawCircle(blendspace_screen_pos.x, blendspace_screen_pos.y, 10 , WHITE);
+
       
       for(int i = 0; i < anim_uv_coord.rows; i++)
       {
@@ -179,8 +179,24 @@ void draw_anim_uv(glm::vec2 blendspace_pos, mat anim_uv_coord, BlendspaceGui gui
 
             Color col = ColorLerp(WHITE, RED, blend_weights[i]);
             DrawCircle(screen_pos.x, screen_pos.y, 5 , col);
+
+            float button_size = 30;
+            Rectangle rec{screen_pos.x - 15, screen_pos.y - 15, button_size, button_size};
+            if (GuiButton(rec, "#150#"))
+            {
+                  config_blendspace_anim(rec);
+            }
       }
+
+      Vector2 blendspace_screen_pos;
+      float uv[2];
+      uv[0] = blendspace_pos.x;
+      uv[1] = blendspace_pos.y;
+      uv_to_screen(gui_dim.p00, gui_dim.p10, gui_dim.p01, uv, &blendspace_screen_pos);
+      DrawCircle(blendspace_screen_pos.x, blendspace_screen_pos.y, 10 , WHITE);
 }
+
+
 
 void compute_blendspace_pos(float dt, glm::vec2 input, glm::vec2 &uv)
 {
@@ -213,7 +229,7 @@ void compute_blendspace_pos(float dt, glm::vec2 input, glm::vec2 &uv)
       uv = glm::clamp(uv, 0.0f, 1.0f);
 }
 
-void draw_blendspace_gui(BlendspaceGui blend_space_gui,
+void tick_blendspace_gui(BlendspaceGui blend_space_gui,
                          int anim_count,
                          glm::vec2 uv,
                          mat anim_uv_coords,
@@ -228,7 +244,6 @@ void draw_blendspace_gui(BlendspaceGui blend_space_gui,
       GuiDrawRectangle(rec, 2, GRAY, DARKGRAY);
       
       compute_distances(anim_uv_coords, distances, uv);
-      DrawText(TextFormat("%.1f, %.1f", uv.x, uv.y), 10, 630, 25, GREEN);
       std::vector<float> blend_weights = compute_blend_weights(distances, blend_mat);
       clamp_normalize_blend_weights(blend_weights);
 

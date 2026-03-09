@@ -1,4 +1,4 @@
-void process_input(float dt, glm::vec2 &input)
+void tick_input(float dt, glm::vec2 &input)
 {
       input = glm::vec2(0.0f);
       if(IsKeyPressed(KEY_Q))
