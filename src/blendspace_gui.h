@@ -166,11 +166,7 @@ struct AnimParamGUI
       BlendspaceNode *node;
       bool close = false;
 
-      AnimParamGUI(Rectangle in_rec, BlendspaceNode *in_node) : rec(in_rec), node(in_node)
-      {
-            
-      }
-      
+      AnimParamGUI(Rectangle in_rec, BlendspaceNode *in_node) : rec(in_rec), node(in_node) {}
 };
 
 std::vector<AnimParamGUI> anim_param_guis;
@@ -183,7 +179,7 @@ void render_anim_params(ModelAnimation *anims, int anim_count, Blendspace &blend
 
             GuiWindowFloating(&pos, &window_size, &minimized,
                               &moving, &resizing, &DrawContent,
-                              Vector2{ 140, 320 }, &scroll, "anim params",
+                              Vector2{ 140, 320 }, &scroll, anims[it->node->id].name,
                               anims, anim_count, it->close, it->node);
             if (it->close)
             {
@@ -257,7 +253,6 @@ void compute_blendspace_pos(float dt, glm::vec2 input, glm::vec2 &uv)
 }
 
 void tick_blendspace_gui(BlendspaceGui blend_space_gui,
-                         int anim_count,
                          glm::vec2 current_blendspace_pos,
                          Blendspace &blendspace,
                          mat blend_mat,
@@ -279,7 +274,7 @@ void tick_blendspace_gui(BlendspaceGui blend_space_gui,
       draw_anim_uv(current_blendspace_pos, blendspace, blend_space_gui, blend_weights);
       
 
-      for(int i = 0; i < anim_count; i++)
+      for(int i = 0; i < blendspace.nodes.size(); i++)
       {
             DrawText(TextFormat("%.1f\n", blend_weights[i]), 10, 50 + 20 * i, 25, RED);            
       }

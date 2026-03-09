@@ -41,7 +41,6 @@ struct BoneTransform
 };
 
 void ThreeWayBlendPose(Model& model,
-                       int anim_count,
                        std::span<float> weights,
                        Blendspace blendspace,
                        std::span<BoneTransform> in_poses,
@@ -55,7 +54,7 @@ void ThreeWayBlendPose(Model& model,
             OutPose[i].scale = glm::vec3(1.0f);
       }
 
-      for(int i = 0; i < anim_count; i ++)
+      for(int i = 0; i < blendspace.nodes.size(); i ++)
       {
             if(weights[i] == 0.0f)
             {

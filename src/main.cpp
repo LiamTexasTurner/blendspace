@@ -109,24 +109,25 @@ int main()
       Blendspace blendspace {};
 
       blendspace.nodes.emplace_back(BlendspaceNode{0.5, 0.0, 0});
-      blendspace.nodes.emplace_back(BlendspaceNode{1.0, 0.5, 1});
-      blendspace.nodes.emplace_back(BlendspaceNode{0.5, 1.0, 2});
-      blendspace.nodes.emplace_back(BlendspaceNode{0.0, 0.5, 3});
+      blendspace.nodes.emplace_back(BlendspaceNode{1.0, 0.5, 0});
+      blendspace.nodes.emplace_back(BlendspaceNode{0.5, 1.0, 0});
+      blendspace.nodes.emplace_back(BlendspaceNode{0.0, 0.5, 0});
+      
 
-      blendspace.uv.rows = anim_count;
+      blendspace.uv.rows = blendspace.nodes.size();
       blendspace.uv.cols = 2;
-      blendspace.uv.data.resize(anim_count * 2);
-      for(int i = 0; i < anim_count; i++)
+      blendspace.uv.data.resize(blendspace.nodes.size() * 2);
+      for(int i = 0; i < blendspace.nodes.size(); i++)
       {
             blendspace.uv(i, 0) = blendspace.nodes[i].x;
             blendspace.uv(i, 1) = blendspace.nodes[i].y;
       }
       
       mat blend_mat = init_blend_mat(blendspace);
-      std::vector<float> distances(anim_count, 0);
+      std::vector<float> distances(blendspace.nodes.size(), 0);
       unsigned int anim_current_frame = 0;
 
-      std::vector<float> blend_weights(anim_count);
+      std::vector<float> blend_weights(blendspace.nodes.size());
 
       glm::vec2 input;
       glm::vec2 current_blendspace_pos{0.5f, 0.5f};
@@ -157,7 +158,7 @@ int main()
       
             ls_bone_transforms = bone_ms_to_ls(model, bone_transforms, anim_count);
 
-            ThreeWayBlendPose(model, anim_count, blend_weights, blendspace, ls_bone_transforms, out_pose, bind_pose);
+            ThreeWayBlendPose(model, blend_weights, blendspace, ls_bone_transforms, out_pose, bind_pose);
             
             FK(model, out_pose);
             
@@ -177,7 +178,7 @@ int main()
             
             compute_blendspace_pos(GetFrameTime(), input, current_blendspace_pos);
             
-            tick_blendspace_gui(blend_space_gui, anim_count, current_blendspace_pos, blendspace, blend_mat,  distances, blend_weights);
+            tick_blendspace_gui(blend_space_gui, current_blendspace_pos, blendspace, blend_mat,  distances, blend_weights);
             
             render_anim_params(anims, anim_count, blendspace);
 

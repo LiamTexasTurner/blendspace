@@ -34,7 +34,7 @@ void GuiWindowFloating(Vector2 *position, Vector2 *size, bool *minimized, bool *
             if(CheckCollisionPointRec(mouse_position, title_collision_rect)) {
                   *moving = true;
             } else if(!*minimized && CheckCollisionPointRec(mouse_position, resize_collision_rect)) {
-                  *resizing = true;
+                 *resizing = true;
             }
       }
 
