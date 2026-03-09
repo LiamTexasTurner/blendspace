@@ -1,4 +1,3 @@
-
 #include "glm/common.hpp"
 #include "glm/geometric.hpp"
 #include "raylib.h"
@@ -20,6 +19,7 @@
 #include "common.h"
 #include "mat.h"
 #include "animation.h"
+#include "floating_window.h"
 #include "blendspace_gui.h"
 #include "input.h"
 
@@ -90,10 +90,10 @@ int main()
       anims_uv_coords.cols = 2;
       anims_uv_coords.data =
       {
-            1.0, 0.5,
             0.5, 0.0,
-            0.0, 0.5,
-            0.5, 1.0
+            1.0, 0.5,
+            0.5, 1.0,
+            0.0, 0.5
       };
       
       mat blend_mat = init_blend_mat(anims_uv_coords);
@@ -149,19 +149,14 @@ int main()
             EndMode3D();
 
             //----STOP DRAWING 3D-----------------
-
             
-
-            
-
             //----DRAW GUI-----------------------
             
-            
-            
-
             compute_blendspace_pos(GetFrameTime(), input, uv);
             
             tick_blendspace_gui(blend_space_gui, anim_count, uv, anims_uv_coords, blend_mat,  distances, blend_weights);
+
+            render_anim_params(anims, anim_count);
 
             EndDrawing();
 

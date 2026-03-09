@@ -163,15 +163,38 @@ void clamp_normalize_blend_weights(std::span<float> weights)
       }
 }
 
-void config_blendspace_anim(Rectangle rec)
+struct AnimParamGUI
 {
-      
+      Rectangle rec;
+      bool close = false;
+};
+
+std::vector<AnimParamGUI> anim_param_guis;
+
+void render_anim_params(ModelAnimation *anims, int anim_count)
+{
+      for (auto it = anim_param_guis.begin(); it != anim_param_guis.end();)
+      {
+            Vector2 pos{ it->rec.x + 12, it->rec.y + 12 };
+
+            GuiWindowFloating(&pos, &window_size, &minimized,
+                              &moving, &resizing, &DrawContent,
+                              Vector2{ 140, 320 }, &scroll, "anim params",
+                              anims, anim_count, it->close);
+            if (it->close)
+            {
+                  it = anim_param_guis.erase(it);
+                  minimized = false;
+            }
+            else
+            {
+                  ++it;
+            }
+      }
 }
 
 void draw_anim_uv(glm::vec2 blendspace_pos, mat anim_uv_coord, BlendspaceGui gui_dim, std::vector<float> blend_weights)
 {
-
-      
       for(int i = 0; i < anim_uv_coord.rows; i++)
       {
             Vector2 screen_pos;
@@ -184,7 +207,8 @@ void draw_anim_uv(glm::vec2 blendspace_pos, mat anim_uv_coord, BlendspaceGui gui
             Rectangle rec{screen_pos.x - 15, screen_pos.y - 15, button_size, button_size};
             if (GuiButton(rec, "#150#"))
             {
-                  config_blendspace_anim(rec);
+                  
+                  anim_param_guis.emplace_back(AnimParamGUI{rec});
             }
       }
 
@@ -195,8 +219,6 @@ void draw_anim_uv(glm::vec2 blendspace_pos, mat anim_uv_coord, BlendspaceGui gui
       uv_to_screen(gui_dim.p00, gui_dim.p10, gui_dim.p01, uv, &blendspace_screen_pos);
       DrawCircle(blendspace_screen_pos.x, blendspace_screen_pos.y, 10 , WHITE);
 }
-
-
 
 void compute_blendspace_pos(float dt, glm::vec2 input, glm::vec2 &uv)
 {
