@@ -18,9 +18,30 @@
 #include "raygui.h"
 #include "common.h"
 #include "mat.h"
-#include "animation.h"
+
+struct BlendspaceGui
+{
+      Vector2 p00;
+      Vector2 p10;
+      Vector2 p01;
+      float width;
+      float height;
+};
+struct BlendspaceNode
+{
+      float x;
+      float y;
+      int id;
+};
+struct Blendspace
+{
+      mat uv;
+      std::vector<BlendspaceNode> nodes;
+};
+
 #include "floating_window.h"
 #include "blendspace_gui.h"
+#include "animation.h"
 #include "input.h"
 
 int main()
@@ -84,26 +105,31 @@ int main()
       
       const int paramspace_width = 800;
       const int paramspace_height = 800;
-      
-      mat anims_uv_coords = {};
-      anims_uv_coords.rows = anim_count;
-      anims_uv_coords.cols = 2;
-      anims_uv_coords.data =
+
+      Blendspace blendspace {};
+
+      blendspace.nodes.emplace_back(BlendspaceNode{0.5, 0.0, 0});
+      blendspace.nodes.emplace_back(BlendspaceNode{1.0, 0.5, 1});
+      blendspace.nodes.emplace_back(BlendspaceNode{0.5, 1.0, 2});
+      blendspace.nodes.emplace_back(BlendspaceNode{0.0, 0.5, 3});
+
+      blendspace.uv.rows = anim_count;
+      blendspace.uv.cols = 2;
+      blendspace.uv.data.resize(anim_count * 2);
+      for(int i = 0; i < anim_count; i++)
       {
-            0.5, 0.0,
-            1.0, 0.5,
-            0.5, 1.0,
-            0.0, 0.5
-      };
+            blendspace.uv(i, 0) = blendspace.nodes[i].x;
+            blendspace.uv(i, 1) = blendspace.nodes[i].y;
+      }
       
-      mat blend_mat = init_blend_mat(anims_uv_coords);
+      mat blend_mat = init_blend_mat(blendspace);
       std::vector<float> distances(anim_count, 0);
       unsigned int anim_current_frame = 0;
 
       std::vector<float> blend_weights(anim_count);
 
       glm::vec2 input;
-      glm::vec2 uv{0.5f, 0.5f};
+      glm::vec2 current_blendspace_pos{0.5f, 0.5f};
       
       while(!WindowShouldClose())
       {
@@ -123,23 +149,20 @@ int main()
             {
                   for(int j = 0; j < model.boneCount; j++)
                   {
-
                         bone_transforms[i * model.boneCount +j].translation = RayVec3ToGLM(anims[i].framePoses[frame][j].translation);
                         bone_transforms[i * model.boneCount +j].rotation    = RayQuatToGLM(anims[i].framePoses[frame][j].rotation);
                         bone_transforms[i * model.boneCount +j].scale       = RayVec3ToGLM(anims[i].framePoses[frame][j].scale);
-            
                   }
             }
       
             ls_bone_transforms = bone_ms_to_ls(model, bone_transforms, anim_count);
 
-            ThreeWayBlendPose(model, anim_count, blend_weights, ls_bone_transforms, out_pose, bind_pose);
+            ThreeWayBlendPose(model, anim_count, blend_weights, blendspace, ls_bone_transforms, out_pose, bind_pose);
             
             FK(model, out_pose);
             
             DeformMesh(model, out_pose);
 
-            
             DrawModel(model, Vector3{0.0f, 0.0f, 0.0f}, 1.0f, WHITE);
 
             frame = (frame + 1)%(40);
@@ -152,16 +175,15 @@ int main()
             
             //----DRAW GUI-----------------------
             
-            compute_blendspace_pos(GetFrameTime(), input, uv);
+            compute_blendspace_pos(GetFrameTime(), input, current_blendspace_pos);
             
-            tick_blendspace_gui(blend_space_gui, anim_count, uv, anims_uv_coords, blend_mat,  distances, blend_weights);
-
-            render_anim_params(anims, anim_count);
+            tick_blendspace_gui(blend_space_gui, anim_count, current_blendspace_pos, blendspace, blend_mat,  distances, blend_weights);
+            
+            render_anim_params(anims, anim_count, blendspace);
 
             EndDrawing();
 
             //----STOP DRAWING GUI----------------
-            
       }
       
       return 0;

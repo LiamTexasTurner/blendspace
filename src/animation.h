@@ -43,6 +43,7 @@ struct BoneTransform
 void ThreeWayBlendPose(Model& model,
                        int anim_count,
                        std::span<float> weights,
+                       Blendspace blendspace,
                        std::span<BoneTransform> in_poses,
 		           std::span<BoneTransform> OutPose,
                        std::span<BoneTransform> RefPose)
@@ -62,11 +63,11 @@ void ThreeWayBlendPose(Model& model,
             }
             for(int j = 0; j < model.boneCount; j++)
             {
-                  glm::vec3 translation =  in_poses[i * model.boneCount + j].translation;
+                  glm::vec3 translation =  in_poses[blendspace.nodes[i].id * model.boneCount + j].translation;
                   OutPose[j].translation += weights[i] * translation;
 
       
-                  glm::quat rotation =  in_poses[i * model.boneCount + j].rotation;
+                  glm::quat rotation =  in_poses[blendspace.nodes[i].id * model.boneCount + j].rotation;
                   glm::quat q = glm::inverse(RefPose[j].rotation) * rotation;
                   if (glm::dot(OutPose[j].rotation, q) < 0.0f) q = -q;
                   OutPose[j].rotation += weights[i] * q;
@@ -206,7 +207,9 @@ void DeformMesh(Model model, std::span<BoneTransform> pose)
 	                  glm::vec3 bone_anim_position = pose[boneId].translation;
 	                  glm::quat bone_anim_rotation = pose[boneId].rotation;
 	
-	                  glm::vec3 vertex_pos = glm::vec3(mesh.vertices[vCounter], mesh.vertices[vCounter + 1], mesh.vertices[vCounter + 2]);
+	                  glm::vec3 vertex_pos = glm::vec3(mesh.vertices[vCounter],
+                                                         mesh.vertices[vCounter + 1],
+                                                         mesh.vertices[vCounter + 2]);
 
 
 	                  vertex_pos = glm::inverse(bone_bind_rotation) * (vertex_pos - bone_bind_position);

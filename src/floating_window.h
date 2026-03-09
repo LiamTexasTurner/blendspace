@@ -13,7 +13,7 @@ static bool moving2 = false;
 static bool resizing2 = false;
 static Vector2 scroll2;
 
-void GuiWindowFloating(Vector2 *position, Vector2 *size, bool *minimized, bool *moving, bool *resizing, void (*draw_content)(Vector2, Vector2, ModelAnimation*, int, bool&), Vector2 content_size, Vector2 *scroll, const char* title, ModelAnimation *anims, int anim_count, bool &close) {
+void GuiWindowFloating(Vector2 *position, Vector2 *size, bool *minimized, bool *moving, bool *resizing, void (*draw_content)(Vector2, Vector2, ModelAnimation*, BlendspaceNode*, int, bool&), Vector2 content_size, Vector2 *scroll, const char* title, ModelAnimation *anims, int anim_count, bool &close, BlendspaceNode* blendspace_node) {
       #if !defined(RAYGUI_WINDOWBOX_STATUSBAR_HEIGHT)
 #define RAYGUI_WINDOWBOX_STATUSBAR_HEIGHT 24
 #endif
@@ -75,7 +75,8 @@ void GuiWindowFloating(Vector2 *position, Vector2 *size, bool *minimized, bool *
             // scissor and draw content within a scroll panel
             if(draw_content != NULL) {
                   Rectangle scissor = { 0 };
-                  GuiScrollPanel(Rectangle { position->x, position->y + RAYGUI_WINDOWBOX_STATUSBAR_HEIGHT, size->x, size->y - RAYGUI_WINDOWBOX_STATUSBAR_HEIGHT },
+                  GuiScrollPanel(Rectangle { position->x, position->y + RAYGUI_WINDOWBOX_STATUSBAR_HEIGHT,
+                                             size->x, size->y - RAYGUI_WINDOWBOX_STATUSBAR_HEIGHT },
                                  NULL,
                                  Rectangle { position->x, position->y, content_size.x, content_size.y },
                                  scroll,
@@ -87,7 +88,7 @@ void GuiWindowFloating(Vector2 *position, Vector2 *size, bool *minimized, bool *
                         BeginScissorMode(scissor.x, scissor.y, scissor.width, scissor.height);
                   }
 
-                  draw_content(*position, *scroll, anims, anim_count, close);
+                  draw_content(*position, *scroll, anims, blendspace_node, anim_count, close);
 
                   if(require_scissor) {
                         EndScissorMode();
@@ -99,11 +100,12 @@ void GuiWindowFloating(Vector2 *position, Vector2 *size, bool *minimized, bool *
       }
 }
 
-static void DrawContent(Vector2 position, Vector2 scroll, ModelAnimation *anims, int anim_count, bool &close) {
+static void DrawContent(Vector2 position, Vector2 scroll, ModelAnimation *anims, BlendspaceNode *blendspace_node, int anim_count, bool &close) {
       for(int i = 0; i < anim_count; i ++)
       {
             if (GuiButton(Rectangle { position.x + 20 + scroll.x, position.y + 50 + (50 * i) + scroll.y, 100, 25 }, anims[i].name))
             {
+                  blendspace_node->id = i;
                   close = true;
             }
       }
