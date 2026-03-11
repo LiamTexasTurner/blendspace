@@ -311,7 +311,48 @@ static void DrawContent(Vector2 position, Vector2 scroll, ModelAnimation *anims,
 }
 
 
+// Button control, returns true when clicked
+int GuiButtonPro(Rectangle bounds, const char *text, int *focused, GuiState &state)
+{
+    int result = 0;
+    state = guiState;
 
+    // Update control
+    //--------------------------------------------------------------------
+    if ((state != STATE_DISABLED) && !guiLocked && !guiControlExclusiveMode)
+    {
+        Vector2 mousePoint = GetMousePosition();
+
+        // Check button state
+        if (CheckCollisionPointRec(mousePoint, bounds))
+        {
+            if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) state = STATE_PRESSED;
+            else state = STATE_FOCUSED;
+
+            if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) result = 1;
+        }
+        // Return the focused state
+        if (focused != NULL) *focused = (state == STATE_FOCUSED);
+    }
+    //--------------------------------------------------------------------
+
+    // Draw control
+    //--------------------------------------------------------------------
+      GuiDrawRectangle(bounds,
+                       GuiGetStyle(BUTTON, BORDER_WIDTH),
+                       GetColor(GuiGetStyle(BUTTON, BORDER + (state*3))),
+                       GetColor(GuiGetStyle(BUTTON, BASE + (state*3))));
+      
+      GuiDrawText(text,
+                  GetTextBounds(BUTTON, bounds),
+                  GuiGetStyle(BUTTON, TEXT_ALIGNMENT),
+                  GetColor(GuiGetStyle(BUTTON, TEXT + (state*3))));
+
+    if (state == STATE_FOCUSED) GuiTooltip(bounds);
+    //------------------------------------------------------------------
+
+    return result;      // Button pressed: result = 1
+}
 
 
 
@@ -363,11 +404,28 @@ void draw_anim_uv(glm::vec2 current_blendspace_pos, Blendspace &blendspace, Blen
 
             float button_size = 30;
             Rectangle rec{screen_pos.x - 15, screen_pos.y - 15, button_size, button_size};
-            if (GuiButton(rec, "#150#"))
+
+            int focused = 0;
+            GuiState state;
+            int result = GuiButtonPro(rec, "#150#", &focused, state);
+
+            if(state == STATE_PRESSED)
             {
                   
+            }
+
+            if (result)
+            {
                   anim_param_guis.emplace_back(AnimParamGUI{rec, &blendspace.nodes[i]});
-                  float x = 0;
+
+            }
+            else if (focused)
+            {
+                  
+            }
+            else
+            {
+                  
             }
       }
 

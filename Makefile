@@ -20,9 +20,6 @@ LDFLAGS = /link /DEBUG /OUT:"$(OUT_EXE)" \
           /LIBPATH:"$(VLIB_DEBUG)" \
           raylib.lib winmm.lib gdi32.lib user32.lib shell32.lib
 
-
-
-
 # -------- PHONY --------
 .PHONY: all clean debugrun FORCE
 
@@ -39,6 +36,4 @@ $(OUT_EXE): FORCE | $(OUT_DIR)
 clean:
 	rmdir /s /q "$(OUT_DIR)" 2>NUL || echo Make clean done.
 
-debugrun: clean all
-
-FORCE:
+debugrun: clean 

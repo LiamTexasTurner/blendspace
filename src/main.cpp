@@ -76,7 +76,6 @@ int main()
                   bone_transforms[j].scale       = RayVec3ToGLM(anims[i].framePoses[frame][j].scale);
             }
       }
-            
       
       std::vector<BoneTransform> out_pose(model.boneCount);
       
