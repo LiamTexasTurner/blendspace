@@ -18,28 +18,7 @@
 #include "raygui.h"
 #include "common.h"
 #include "mat.h"
-
-struct BlendspaceGui
-{
-      Vector2 p00;
-      Vector2 p10;
-      Vector2 p01;
-      float width;
-      float height;
-};
-struct BlendspaceNode
-{
-      float x;
-      float y;
-      int id;
-};
-struct Blendspace
-{
-      mat uv;
-      std::vector<BlendspaceNode> nodes;
-};
-
-#include "floating_window.h"
+#include "anim_loader.h"
 #include "blendspace_gui.h"
 #include "animation.h"
 #include "input.h"
@@ -73,7 +52,7 @@ int main()
       Model model = LoadModel("chips.glb");
       
       int anim_count;
-      ModelAnimation *anims = LoadModelAnimations("chips.glb", &anim_count);
+      ModelAnimation *anims = LoadModelAnimations_ls("chips.glb", &anim_count);
       int frame = 0;            
 
       std::vector<BoneTransform> bind_pose(model.boneCount);
@@ -98,8 +77,6 @@ int main()
             }
       }
             
-      std::vector<BoneTransform> ls_bone_transforms(model.boneCount * anim_count);
-      ls_bone_transforms = bone_ms_to_ls(model, bone_transforms, anim_count);
       
       std::vector<BoneTransform> out_pose(model.boneCount);
       
@@ -156,9 +133,7 @@ int main()
                   }
             }
       
-            ls_bone_transforms = bone_ms_to_ls(model, bone_transforms, anim_count);
-
-            ThreeWayBlendPose(model, blend_weights, blendspace, ls_bone_transforms, out_pose, bind_pose);
+            ThreeWayBlendPose(model, blend_weights, blendspace, bone_transforms, out_pose, bind_pose);
             
             FK(model, out_pose);
             

@@ -5,21 +5,20 @@ void tick_input(float dt, glm::vec2 &input)
       {
             CloseWindow();
       }
-
       glm::vec2 input_vectors(0.0f);
-      if(IsKeyDown(KEY_E))
+      if(IsKeyDown(KEY_W))
       {
             input_vectors += glm::vec2(0.0f, 1.0f);
       }
-      if(IsKeyDown(KEY_F))
+      if(IsKeyDown(KEY_D))
       {
             input_vectors += glm::vec2(1.0f, 0.0f);
       }
-      if(IsKeyDown(KEY_D))
+      if(IsKeyDown(KEY_S))
       {
             input_vectors += glm::vec2(0.0f, -1.0f);
       }
-      if(IsKeyDown(KEY_S))
+      if(IsKeyDown(KEY_A))
       {
             input_vectors += glm::vec2(-1.0f, 0.0f);
       }
