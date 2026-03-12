@@ -84,35 +84,19 @@ int main()
 
       Blendspace blendspace {};
 
-      blendspace.nodes.emplace_back(BlendspaceNode{0.5, 0.0, 0});
-      blendspace.nodes.emplace_back(BlendspaceNode{1.0, 0.5, 0});
-      blendspace.nodes.emplace_back(BlendspaceNode{0.5, 1.0, 0});
-      blendspace.nodes.emplace_back(BlendspaceNode{0.0, 0.5, 0});
+      blendspace.nodes.emplace_back(BlendspaceNode{0.5, 0.0, 2});
+      blendspace.nodes.emplace_back(BlendspaceNode{1.0, 0.5, 4});
+      blendspace.nodes.emplace_back(BlendspaceNode{0.5, 1.0, 1});
+      blendspace.nodes.emplace_back(BlendspaceNode{0.0, 0.5, 3});
       
-
-      blendspace.uv.rows = blendspace.nodes.size();
-      blendspace.uv.cols = 2;
-      blendspace.uv.data.resize(blendspace.nodes.size() * 2);
-      for(int i = 0; i < blendspace.nodes.size(); i++)
-      {
-            blendspace.uv(i, 0) = blendspace.nodes[i].x;
-            blendspace.uv(i, 1) = blendspace.nodes[i].y;
-      }
-      
-      mat blend_mat = init_blend_mat(blendspace);
-      std::vector<float> distances(blendspace.nodes.size(), 0);
       unsigned int anim_current_frame = 0;
 
-      std::vector<float> blend_weights(blendspace.nodes.size());
+      update_blendspace_blend_mat(blendspace);
 
-      glm::vec2 input;
-      glm::vec2 current_blendspace_pos{0.5f, 0.5f};
       
       while(!WindowShouldClose())
       {
             BeginDrawing();
-
-            tick_input(GetFrameTime(), input);
             
             UpdateCamera(&camera, CAMERA_ORBITAL);
 
@@ -131,8 +115,11 @@ int main()
                         bone_transforms[i * model.boneCount +j].scale       = RayVec3ToGLM(anims[i].framePoses[frame][j].scale);
                   }
             }
-      
-            ThreeWayBlendPose(model, blend_weights, blendspace, bone_transforms, out_pose, bind_pose);
+
+            compute_blendspace_pos(GetFrameTime(), tick_input(GetFrameTime()), blendspace.current_blendspace_uv);
+            compute_blend_weights(blendspace);
+            
+            ThreeWayBlendPose(model, blendspace, bone_transforms, out_pose, bind_pose);
             
             FK(model, out_pose);
             
@@ -150,9 +137,7 @@ int main()
             
             //----DRAW GUI-----------------------
             
-            compute_blendspace_pos(GetFrameTime(), input, current_blendspace_pos);
-            
-            tick_blendspace_gui(blend_space_gui, current_blendspace_pos, blendspace, blend_mat,  distances, blend_weights);
+            tick_blendspace_gui(blend_space_gui, blendspace);
             
             render_anim_params(anims, anim_count, blendspace);
 

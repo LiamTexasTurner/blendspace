@@ -1,6 +1,6 @@
-void tick_input(float dt, glm::vec2 &input)
+glm::vec2 tick_input(float dt)
 {
-      input = glm::vec2(0.0f);
+      glm::vec2 input = glm::vec2(0.0f);
       if(IsKeyPressed(KEY_Q))
       {
             CloseWindow();
@@ -31,4 +31,5 @@ void tick_input(float dt, glm::vec2 &input)
       {
             input = glm::vec2(0.0f);
       }
+      return input;
 }

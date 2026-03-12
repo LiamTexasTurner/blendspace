@@ -41,7 +41,6 @@ struct BoneTransform
 };
 
 void ThreeWayBlendPose(Model& model,
-                       std::span<float> weights,
                        Blendspace blendspace,
                        std::span<BoneTransform> in_poses,
 		           std::span<BoneTransform> OutPose,
@@ -56,20 +55,20 @@ void ThreeWayBlendPose(Model& model,
 
       for(int i = 0; i < blendspace.nodes.size(); i ++)
       {
-            if(weights[i] == 0.0f)
+            if(blendspace.blend_weights[i] == 0.0f)
             {
                   continue;
             }
             for(int j = 0; j < model.boneCount; j++)
             {
-                  glm::vec3 translation =  in_poses[blendspace.nodes[i].id * model.boneCount + j].translation;
-                  OutPose[j].translation += weights[i] * translation;
+                  glm::vec3 translation =  in_poses[blendspace.nodes[i].anim_id * model.boneCount + j].translation;
+                  OutPose[j].translation += blendspace.blend_weights[i] * translation;
 
       
-                  glm::quat rotation =  in_poses[blendspace.nodes[i].id * model.boneCount + j].rotation;
+                  glm::quat rotation =  in_poses[blendspace.nodes[i].anim_id * model.boneCount + j].rotation;
                   glm::quat q = glm::inverse(RefPose[j].rotation) * rotation;
                   if (glm::dot(OutPose[j].rotation, q) < 0.0f) q = -q;
-                  OutPose[j].rotation += weights[i] * q;
+                  OutPose[j].rotation += blendspace.blend_weights[i] * q;
             }  
       }
 

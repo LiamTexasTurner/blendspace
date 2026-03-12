@@ -1,3 +1,5 @@
+#include "raylib.h"
+#include <exception>
 struct BlendspaceGui
 {
       Vector2 p00;
@@ -10,12 +12,15 @@ struct BlendspaceNode
 {
       float x;
       float y;
-      int id;
+      int anim_id;
 };
 struct Blendspace
 {
-      mat uv;
+      mat node_uv_mat;
+      mat blend_weight_mat;
+      std::vector<float> blend_weights;
       std::vector<BlendspaceNode> nodes;
+      glm::vec2 current_blendspace_uv;
 };
 
 template<typename T, glm::length_t C, glm::length_t R>
@@ -76,7 +81,7 @@ mat init_blend_mat(Blendspace blendspace)
 {
       int n_anims = blendspace.nodes.size();
 
-      mat &anim_uv = blendspace.uv;
+      mat &anim_uv = blendspace.node_uv_mat;
       
       mat distances_mat = {};
       distances_mat.rows = n_anims;
@@ -128,29 +133,6 @@ mat init_blend_mat(Blendspace blendspace)
       return blend_mat;
 }
 
-void compute_distances(Blendspace blendspace,
-                       std::span<float> distance,
-                       glm::vec2 current_blendspace_pos)
-{
-      
-      for(int i = 0; i < blendspace.uv.rows; i++)
-      {
-            distance[i] = 0.0f;
-            for(int j = 0; j < blendspace.uv.cols; j++)
-            {
-                  distance[i] += (current_blendspace_pos[j] - blendspace.uv(i,j)) * (current_blendspace_pos[j] - blendspace.uv(i,j));
-            }
-            distance[i] = sqrt(distance[i]);
-      }
-}
-
-std::vector<float> compute_blend_weights(std::span<float> distances,
-                                         mat blend_mat)
-{
-      assert(distances.size() == blend_mat.rows);
-      return mul_vec(blend_mat, distances);
-}
-
 void clamp_normalize_blend_weights(std::span<float> weights)
 {
       float total_blend_weights = 0.0f;
@@ -164,9 +146,29 @@ void clamp_normalize_blend_weights(std::span<float> weights)
             weights[i] /= total_blend_weights;
       }
 }
+
+void compute_blend_weights(Blendspace &blendspace)
+{
+      std::vector<float> distances(blendspace.nodes.size(), 0);
+      
+      for(int i = 0; i < blendspace.node_uv_mat.rows; i++)
+      {
+            distances[i] = 0.0f;
+            for(int j = 0; j < blendspace.node_uv_mat.cols; j++)
+            {
+                  distances[i] += (blendspace.current_blendspace_uv[j] - blendspace.node_uv_mat(i,j)) *
+                                 (blendspace.current_blendspace_uv[j] - blendspace.node_uv_mat(i,j));
+            }
+            distances[i] = sqrt(distances[i]);
+      }
+      
+      blendspace.blend_weights = mul_vec(blendspace.blend_weight_mat, distances);
+      clamp_normalize_blend_weights(blendspace.blend_weights);
+}
+
+
 void compute_blendspace_pos(float dt, glm::vec2 input, glm::vec2 &uv)
 {
-
       glm::vec2 offset(0.5f, 0.5f);
       float delta_x = 0;
       float delta_y = 0;
@@ -194,9 +196,6 @@ void compute_blendspace_pos(float dt, glm::vec2 input, glm::vec2 &uv)
 
       uv = glm::clamp(uv, 0.0f, 1.0f);
 }
-
-
-
 
 static Vector2 window_position = { 10, 10 };
 static Vector2 window_size = { 200, 400 };
@@ -304,7 +303,7 @@ static void DrawContent(Vector2 position, Vector2 scroll, ModelAnimation *anims,
       {
             if (GuiButton(Rectangle { position.x + 20 + scroll.x, position.y + 50 + (50 * i) + scroll.y, 100, 25 }, anims[i].name))
             {
-                  blendspace_node->id = i;
+                  blendspace_node->anim_id = i;
                   close = true;
             }
       }
@@ -378,7 +377,7 @@ void render_anim_params(ModelAnimation *anims, int anim_count, Blendspace &blend
 
             GuiWindowFloating(&pos, &window_size, &minimized,
                               &moving, &resizing, &DrawContent,
-                              Vector2{ 140, 320 }, &scroll, anims[it->node->id].name,
+                              Vector2{ 140, 320 }, &scroll, anims[it->node->anim_id].name,
                               anims, anim_count, it->close, it->node);
             if (it->close)
             {
@@ -392,18 +391,23 @@ void render_anim_params(ModelAnimation *anims, int anim_count, Blendspace &blend
       }
 }
 
-void draw_anim_uv(glm::vec2 current_blendspace_pos, Blendspace &blendspace, BlendspaceGui gui_dim, std::vector<float> blend_weights)
+void draw_anim_uv(Blendspace &blendspace, BlendspaceGui gui_dim)
 {
-      for(int i = 0; i < blendspace.uv.rows; i++)
+      for(int i = 0; i < blendspace.node_uv_mat.rows; i++)
       {
             Vector2 screen_pos;
-            uv_to_screen(gui_dim.p00, gui_dim.p10, gui_dim.p01, blendspace.uv(i), &screen_pos);
+            uv_to_screen(gui_dim.p00, gui_dim.p10, gui_dim.p01, blendspace.node_uv_mat(i), &screen_pos);
 
-            Color col = ColorLerp(WHITE, RED, blend_weights[i]);
+            Color col = ColorLerp(WHITE, RED, blendspace.blend_weights[i]);
             DrawCircle(screen_pos.x, screen_pos.y, 5 , col);
 
             float button_size = 30;
             Rectangle rec{screen_pos.x - 15, screen_pos.y - 15, button_size, button_size};
+
+            {
+                  
+            }            float x = blendspace.current_blendspace_uv.x;
+            float y = blendspace.current_blendspace_uv.y;
 
             int focused = 0;
             GuiState state;
@@ -411,7 +415,11 @@ void draw_anim_uv(glm::vec2 current_blendspace_pos, Blendspace &blendspace, Blen
 
             if(state == STATE_PRESSED)
             {
-                  
+                  Vector2 mouse_pos = GetMousePosition();
+                  float uv [2];
+                  screen_to_uv(gui_dim, mouse_pos, uv);
+                  blendspace.node_uv_mat(i, 0) = uv[0];
+                  blendspace.node_uv_mat(i, 1) = uv[1];
             }
 
             if (result)
@@ -431,8 +439,8 @@ void draw_anim_uv(glm::vec2 current_blendspace_pos, Blendspace &blendspace, Blen
 
       Vector2 blendspace_screen_pos;
       float uv[2];
-      uv[0] = current_blendspace_pos.x;
-      uv[1] = current_blendspace_pos.y;
+      uv[0] = blendspace.current_blendspace_uv.x;
+      uv[1] = blendspace.current_blendspace_uv.y;
       uv_to_screen(gui_dim.p00, gui_dim.p10, gui_dim.p01, uv, &blendspace_screen_pos);
       DrawCircle(blendspace_screen_pos.x, blendspace_screen_pos.y, 10 , WHITE);
 }
@@ -440,11 +448,7 @@ void draw_anim_uv(glm::vec2 current_blendspace_pos, Blendspace &blendspace, Blen
 
 
 void tick_blendspace_gui(BlendspaceGui blend_space_gui,
-                         glm::vec2 current_blendspace_pos,
-                         Blendspace &blendspace,
-                         mat blend_mat,
-                         std::vector<float> distances,
-                         std::vector<float>& out_vec)
+                         Blendspace &blendspace)
 {
 
       Rectangle rec = Rectangle{blend_space_gui.p00.x, blend_space_gui.p00.y,
@@ -452,17 +456,25 @@ void tick_blendspace_gui(BlendspaceGui blend_space_gui,
 
       GuiDrawRectangle(rec, 2, GRAY, DARKGRAY);
       
-      compute_distances(blendspace, distances, current_blendspace_pos);
-      std::vector<float> blend_weights = compute_blend_weights(distances, blend_mat);
-      clamp_normalize_blend_weights(blend_weights);
-
-      out_vec = blend_weights;
-
-      draw_anim_uv(current_blendspace_pos, blendspace, blend_space_gui, blend_weights);
+      draw_anim_uv(blendspace, blend_space_gui);
       
 
       for(int i = 0; i < blendspace.nodes.size(); i++)
       {
-            DrawText(TextFormat("%.1f\n", blend_weights[i]), 10, 50 + 20 * i, 25, RED);            
+            DrawText(TextFormat("%.1f\n", blendspace.blend_weights[i]), 10, 50 + 20 * i, 25, RED);            
       }
+}
+
+void update_blendspace_blend_mat(Blendspace &blendspace)
+{
+      blendspace.node_uv_mat.rows = blendspace.nodes.size();
+      blendspace.node_uv_mat.cols = 2;
+      blendspace.node_uv_mat.data.resize(blendspace.nodes.size() * 2);
+      for(int i = 0; i < blendspace.nodes.size(); i++)
+      {
+            blendspace.node_uv_mat(i, 0) = blendspace.nodes[i].x;
+            blendspace.node_uv_mat(i, 1) = blendspace.nodes[i].y;
+      }
+      blendspace.blend_weight_mat = init_blend_mat(blendspace);
+      blendspace.blend_weights.resize(blendspace.nodes.size());
 }
